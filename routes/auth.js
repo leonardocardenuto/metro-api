@@ -114,6 +114,27 @@ router.post('/forgot-password', async (req, res) => {
     }
 });
 
+// Verify Reset Token Route
+router.get('/verify-reset-token/:token', async (req, res) => {
+    const { token } = req.params;
+
+    try {
+        // Find user by reset token and make sure it's not expired
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired token' });
+        }
+
+        res.json({ message: 'Token is valid' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Reset Password Route
 router.patch('/reset-password/:token', async (req, res) => {
     const { token } = req.params;
