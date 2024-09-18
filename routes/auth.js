@@ -8,19 +8,19 @@ const User = require('../Models/User');
 
 require('dotenv').config();
 
-// Register route
+// Rota de registro
 router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     try {
         let user = await User.findOne({ email });
         if (user) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'Usuário já existe!' });
         }
 
         bcrypt.hash(password, 10, async (err, hash) => {
             if (err) {
-                return res.status(500).json({ message: 'Error hashing password' });
+                return res.status(500).json({ message: 'Erro ao criptografar a senha!' });
             }
 
             user = new User({
@@ -30,31 +30,30 @@ router.post('/register', async (req, res) => {
             });
 
             await user.save();
-            res.status(201).json({ message: 'User registered successfully' });
+            res.status(201).json({ message: 'Usuário registrado com sucesso!' });
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
 
-
-// Login route
+// Rota de login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
         let user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Credenciais inválidas!' });
         }
-        console.log(user);
+
         bcrypt.compare(password.trim(), user.password, (err, isMatch) => {
             if (err) {
-                return res.status(500).json({ message: 'Error comparing passwords' });
+                return res.status(500).json({ message: 'Erro ao comparar as senhas!' });
             }
 
             if (!isMatch) {
-                return res.status(400).json({ message: 'Invalid credentials' });
+                return res.status(400).json({ message: 'Credenciais inválidas!' });
             }
 
             const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -64,12 +63,11 @@ router.post('/login', async (req, res) => {
             res.json({ token });
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
 
-
-// Transporter to send emails (using nodemailer)
+// Transportador para enviar emails (usando nodemailer)
 const transporter = nodemailer.createTransport({
     service: 'hotmail',
     auth: {
@@ -78,81 +76,75 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-
-// Forgot Password Route
+// Rota de esqueci a senha
 router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
 
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ message: 'User not found' });
+            return res.status(400).json({ message: 'Usuário não encontrado!' });
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
-        const tokenExpiry = Date.now() + 10 * 60 * 1000; // Token expires in 10 minutes
+        const tokenExpiry = Date.now() + 10 * 60 * 1000; // Token expira em 10 minutos
 
         user.resetPasswordToken = resetToken;
         user.resetPasswordExpires = tokenExpiry;
-        console.log('Reset token saved:', user.resetPasswordToken);
-        console.log('Token expiry:', user.resetPasswordExpires);
+
         await user.save();
-        console.log('User:', user);
-        console.log('Token:', resetToken);
 
+        /*
+        const mailOptions = {
+            from: process.env.EMAIL,
+            to: user.email,
+            subject: 'Solicitação de Redefinição de Senha',
+            text: `Prezado(a) Usuário(a),
 
-
-        // const mailOptions = {
-        //     from: process.env.EMAIL,
-        //     to: user.email,
-        //     subject: 'Solicitação de Redefinição de Senha',
-        //     text: `Prezado(a) Usuário(a),
-
-        //     Você está recebendo este email porque (ou alguém em seu nome) solicitou a redefinição da senha da sua conta.
+            Você está recebendo este email porque (ou alguém em seu nome) solicitou a redefinição da senha da sua conta.
             
-        //     Para completar o processo de redefinição de senha, por favor, utilize o código abaixo no app:
+            Para completar o processo de redefinição de senha, por favor, utilize o código abaixo no app:
             
-        //     ${resetToken}
+            ${resetToken}
             
-        //     Se você não solicitou a redefinição da senha, por favor, ignore este email. Sua senha permanecerá inalterada.
+            Se você não solicitou a redefinição da senha, por favor, ignore este email. Sua senha permanecerá inalterada.
             
-        //     Atenciosamente,
-        //     MetroMaua`
-        //     };
+            Atenciosamente,
+            MetroMaua`
+        };
 
-        // await transporter.sendMail(mailOptions);
+        await transporter.sendMail(mailOptions);
+        */
 
-        res.json({ message: 'Password reset email sent' });
+        res.json({ message: 'Email de redefinição de senha enviado com sucesso!' });
     } catch (error) {
-        console.error(error); 
-        res.status(500).json({ message: 'Server error' });
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
 
-
-// Verify Reset Token Route
+// Rota para verificar o código de redefinição
 router.get('/verify-reset-token/:token', async (req, res) => {
     const { token } = req.params;
 
     try {
-        // Find user by reset token and make sure it's not expired
+        // Encontrar usuário pelo código de redefinição e garantir que não esteja expirado
         const user = await User.findOne({
             resetPasswordToken: token,
             resetPasswordExpires: { $gt: Date.now() }
         });
 
         if (!user) {
-            return res.status(400).json({ message: 'Invalid or expired token' });
+            return res.status(400).json({ message: 'Código inválido ou expirado!' });
         }
 
-        res.json({ message: 'Token is valid' });
+        res.json({ message: 'Código validado com sucesso!' });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
 
-
-// Reset Password Route
+// Rota para redefinir a senha
 router.patch('/reset-password/:token', async (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
@@ -165,24 +157,23 @@ router.patch('/reset-password/:token', async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).json({ message: 'Invalid or expired token' });
+            return res.status(400).json({ message: 'Código inválido ou expirado!' });
         }
 
         bcrypt.hash(password.trim(), 10, async (err, hash) => {
             if (err) {
-                return res.status(500).json({ message: 'Error hashing password' });
+                return res.status(500).json({ message: 'Erro ao criptografar a senha!' });
             }
 
             user.password = hash;
-            console.log('Hashed reset',user.password)
             user.resetPasswordToken = undefined;
             user.resetPasswordExpires = undefined;
 
             await user.save();
-            res.json({ message: 'Password reset successfully' });
+            res.json({ message: 'Senha redefinida com sucesso!' });
         });
     } catch (error) {
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
 
