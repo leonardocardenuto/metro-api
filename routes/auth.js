@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const db = require('../utils/db');
-const { stringify } = require('querystring');
 
 require('dotenv').config();
 
