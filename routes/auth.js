@@ -1,10 +1,12 @@
+// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const User = require('../Models/User');
+const db = require('../utils/db');
+const { stringify } = require('querystring');
 
 require('dotenv').config();
 
@@ -13,26 +15,19 @@ router.post('/register', async (req, res) => {
     const { username, email, password } = req.body;
 
     try {
-        let user = await User.findOne({ email });
-        if (user) {
+        // Verificar se o usuário já existe
+        const user = await db.executeQuery('SELECT * FROM Users WHERE email = $1', [email]);
+        if (user.length > 0) {
             return res.status(400).json({ message: 'Usuário já existe!' });
         }
 
-        bcrypt.hash(password, 10, async (err, hash) => {
-            if (err) {
-                return res.status(500).json({ message: 'Erro ao criptografar a senha!' });
-            }
-
-            user = new User({
-                username,
-                email,
-                password: hash,
-            });
-
-            await user.save();
-            res.status(201).json({ message: 'Usuário registrado com sucesso!' });
-        });
+        // Hash da senha
+        const hash = await bcrypt.hash(password, 10);
+        await db.insertData('Users', { username, email, password: hash });
+        
+        res.status(201).json({ message: 'Usuário registrado com sucesso!' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
@@ -42,27 +37,20 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        let user = await User.findOne({ email });
-        if (!user) {
+        const user = await db.executeQuery('SELECT * FROM Users WHERE email = $1', [email]);
+        if (user.length === 0) {
             return res.status(400).json({ message: 'Credenciais inválidas!' });
         }
 
-        bcrypt.compare(password.trim(), user.password, (err, isMatch) => {
-            if (err) {
-                return res.status(500).json({ message: 'Erro ao comparar as senhas!' });
-            }
+        const isMatch = await bcrypt.compare(password, user[0].password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Credenciais inválidas!' });
+        }
 
-            if (!isMatch) {
-                return res.status(400).json({ message: 'Credenciais inválidas!' });
-            }
-
-            const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-                expiresIn: '1h',
-            });
-
-            res.json({ token });
-        });
+        const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
@@ -81,23 +69,20 @@ router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) {
+        const user = await db.executeQuery('SELECT * FROM Users WHERE email = $1', [email]);
+        if (user.length === 0) {
             return res.status(400).json({ message: 'Usuário não encontrado!' });
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex');
         const tokenExpiry = Date.now() + 10 * 60 * 1000; // Token expira em 10 minutos
 
-        user.resetPasswordToken = resetToken;
-        user.resetPasswordExpires = tokenExpiry;
-
-        await user.save();
+        await db.updateData('Users', { reset_password_token: resetToken, reset_password_expires: tokenExpiry }, `email = $3`, [email]);
 
         /*
         const mailOptions = {
             from: process.env.EMAIL,
-            to: user.email,
+            to: user[0].email,
             subject: 'Solicitação de Redefinição de Senha',
             text: `Prezado(a) Usuário(a),
 
@@ -115,7 +100,7 @@ router.post('/forgot-password', async (req, res) => {
 
         await transporter.sendMail(mailOptions);
         */
-
+        
         res.json({ message: 'Email de redefinição de senha enviado com sucesso!' });
     } catch (error) {
         console.error(error);
@@ -128,18 +113,14 @@ router.get('/verify-reset-token/:token', async (req, res) => {
     const { token } = req.params;
 
     try {
-        // Encontrar usuário pelo código de redefinição e garantir que não esteja expirado
-        const user = await User.findOne({
-            resetPasswordToken: token,
-            resetPasswordExpires: { $gt: Date.now() }
-        });
-
-        if (!user) {
+        const user = await db.executeQuery('SELECT * FROM Users WHERE reset_password_token = $1 AND reset_password_expires > $2', [token, Date.now()]);
+        if (user.length === 0) {
             return res.status(400).json({ message: 'Código inválido ou expirado!' });
         }
 
         res.json({ message: 'Código validado com sucesso!' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
@@ -150,29 +131,17 @@ router.patch('/reset-password/:token', async (req, res) => {
     const { password } = req.body;
 
     try {
-        const currentTime = Date.now();
-        const user = await User.findOne({
-            resetPasswordToken: token,
-            resetPasswordExpires: { $gt: currentTime }
-        });
-
-        if (!user) {
+        const user = await db.executeQuery('SELECT * FROM Users WHERE reset_password_token = $1 AND reset_password_expires > $2', [token, Date.now()]);
+        if (user.length === 0) {
             return res.status(400).json({ message: 'Código inválido ou expirado!' });
         }
+        
+        const hash = await bcrypt.hash(password, 10);
+        await db.updateData('Users ',{ password: hash , reset_password_token : null, reset_password_expires: null},`id = $4`, [user[0].id]);
 
-        bcrypt.hash(password.trim(), 10, async (err, hash) => {
-            if (err) {
-                return res.status(500).json({ message: 'Erro ao criptografar a senha!' });
-            }
-
-            user.password = hash;
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpires = undefined;
-
-            await user.save();
-            res.json({ message: 'Senha redefinida com sucesso!' });
-        });
+        res.json({ message: 'Senha redefinida com sucesso!' });
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
