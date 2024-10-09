@@ -204,8 +204,55 @@ router.get('/search', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
-});
 
+    // Rota para adicionar extintores
+    router.post('/add-extinguisher', async (req, res) => {
+        const { tipo, capacidade, codigo_fabricante, data_fabricacao, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao, qr_code, observacoes } = req.body;
+
+        try {
+            // Verificar se o extintor com o QR Code já existe
+            const extintor = await db.executeQuery('SELECT * FROM Extintores WHERE qr_code = $1', [qr_code]);
+            if (extintor.length > 0) {
+                return res.status(400).json({ message: 'Extintor já existe com este QR Code!' });
+            }
+
+            // Inserir o novo extintor no banco de dados
+            await db.insertData('Extintores', {
+                tipo,
+                capacidade,
+                codigo_fabricante,
+                data_fabricacao,
+                data_validade,
+                ultima_recarga,
+                proxima_inspecao,
+                status,
+                id_localizacao,
+                qr_code,
+                observacoes
+            });
+
+            res.status(201).json({ message: 'Extintor registrado com sucesso!' });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Erro no servidor!' });
+        }
+    });
+
+    // Exemplo de request
+    // {
+    //     "tipo": "PQS",
+    //     "capacidade": "10kg",
+    //     "codigo_fabricante": "ABC123456",
+    //     "data_fabricacao": "2022-01-15",
+    //     "data_validade": "2027-01-15",
+    //     "ultima_recarga": "2023-01-10",
+    //     "proxima_inspecao": "2024-01-10",
+    //     "status": "Ativo",
+    //     "id_localizacao": 1,
+    //     "qr_code": "QRCODE123456789",
+    //     "observacoes": "Extintor em perfeito estado"
+    //   }
+});
 
 
 module.exports = router;
