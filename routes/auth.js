@@ -136,7 +136,7 @@ router.patch('/reset-password/:token', async (req, res) => {
         }
         
         const hash = await bcrypt.hash(password, 10);
-        await db.updateData('Users ',{ password: hash , reset_password_token : null, reset_password_expires: null},`id = $4`, [user[0].id]);
+        await db.updateData('Users', { password: hash , reset_password_token : null, reset_password_expires: null}, `id = $4`, [user[0].id]);
 
         res.json({ message: 'Senha redefinida com sucesso!' });
     } catch (error) {
@@ -144,5 +144,68 @@ router.patch('/reset-password/:token', async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
+
+// Função para verificar o token
+async function verifyToken(token) {
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        return decoded;
+    } catch (error) {
+        return null;
+    }
+}
+
+router.get('/search', async (req, res) => {
+    const { query } = req.query;
+
+    if (!query) {
+        return res.status(400).json({ message: 'Você deve fornecer um parâmetro de pesquisa.' });
+    }
+
+    const token = req.headers.authorization;
+
+    const decoded = await verifyToken(token);
+
+    if (!decoded) {
+        return res.status(401).json({ message: 'Token inválido ou expirado. Acesso não autorizado.' });
+    }
+
+    try {
+        const patrimonioQuery = Number(query);
+        const isInteger = Number.isInteger(patrimonioQuery);
+
+        let sqlQuery = `
+            SELECT qr_code, patrimonio, tipo, status 
+            FROM extintores 
+            WHERE 1=1
+        `;
+
+        const params = [];
+
+        if (isInteger) {
+            sqlQuery += ` AND (patrimonio = $1::int OR tipo ILIKE $2)`;
+            params.push(patrimonioQuery, `%${query}%`);
+        } else {
+            sqlQuery += ` AND tipo ILIKE $1`;
+            params.push(`%${query}%`);
+        }
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum equipamento encontrado.' });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
+
+
 
 module.exports = router;
