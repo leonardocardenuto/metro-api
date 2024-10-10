@@ -32,7 +32,7 @@ jobs:
           chmod 600 temp_key
 
           # Run npm install on the server
-          ssh -i temp_key -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "cd ${{ secrets.REMOTE_TARGET }} && npm install"
+          ssh -i temp_key -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "cd ${{ secrets.REMOTE_TARGET }} && npm install && sudo systemctl restart express-app"
 
           # Remove the temporary SSH key file
           rm temp_key
