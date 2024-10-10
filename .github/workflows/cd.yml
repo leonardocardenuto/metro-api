@@ -23,8 +23,16 @@ jobs:
           REMOTE_USER: ${{ secrets.REMOTE_USER }}
           REMOTE_PORT: ${{ secrets.REMOTE_PORT }}
           TARGET: ${{ secrets.REMOTE_TARGET }}
-          EXCLUDE: ".env"
+          EXCLUDE: ".env,.venv,start_yee_api.sh"
 
       - name: Run npm install on server
         run: |
-          ssh -i ${{ secrets.REMOTE_SSH_KEY }} -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "cd ${{ secrets.REMOTE_TARGET }} && npm install"
+          # Create a temporary SSH key file
+          echo "${{ secrets.REMOTE_SSH_KEY }}" > temp_key
+          chmod 600 temp_key
+
+          # Run npm install on the server
+          ssh -i temp_key -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_PORT }} ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} "cd ${{ secrets.REMOTE_TARGET }} && npm install"
+
+          # Remove the temporary SSH key file
+          rm temp_key
