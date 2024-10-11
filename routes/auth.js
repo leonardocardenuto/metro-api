@@ -236,8 +236,6 @@ router.post('/add-extinguisher', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
-});
-
 // Exemplo de request
 // {
 //     "tipo": "PQS",
@@ -252,6 +250,43 @@ router.post('/add-extinguisher', async (req, res) => {
 //     "qr_code": "QRCODE123456789",
 //     "observacoes": "Extintor em perfeito estado"
 //   }
+
+
+});
+
+// Rota para pegar estacoes da linha
+router.get('/get-station', async (req, res) => {
+    const { area } = req.query;
+
+    if (!area) {
+        return res.status(400).json({ message: 'Área não informada!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT Subarea 
+            FROM Localizacoes 
+            WHERE Area = $1
+        `;
+        const params = [area];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma subárea encontrada para a área informada.' });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+
+    //http://localhost:5000/api/auth/get-station?area=Linha verde
+});
 
 
 module.exports = router;
