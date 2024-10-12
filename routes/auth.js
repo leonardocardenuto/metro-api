@@ -207,17 +207,11 @@ router.get('/search', async (req, res) => {
 
 // Rota para adicionar extintores
 router.post('/add-extinguisher', async (req, res) => {
-    const { tipo, capacidade, codigo_fabricante, data_fabricacao, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao, qr_code, observacoes } = req.body;
+    const { numero_equipamento, tipo, capacidade, codigo_fabricante, data_fabricacao, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao,  observacoes } = req.body;
 
     try {
-        // Verificar se o extintor com o QR Code já existe
-        const extintor = await db.executeQuery('SELECT * FROM Extintores WHERE qr_code = $1', [qr_code]);
-        if (extintor.length > 0) {
-            return res.status(400).json({ message: 'Extintor já existe com este QR Code!' });
-        }
-
-        // Inserir o novo extintor no banco de dados
         await db.insertData('Extintores', {
+            numero_equipamento,
             tipo,
             capacidade,
             codigo_fabricante,
@@ -227,7 +221,6 @@ router.post('/add-extinguisher', async (req, res) => {
             proxima_inspecao,
             status,
             id_localizacao,
-            qr_code,
             observacoes
         });
 
@@ -238,37 +231,35 @@ router.post('/add-extinguisher', async (req, res) => {
     }
 // Exemplo de request
 // {
-//     "tipo": "PQS",
-//     "capacidade": "10kg",
-//     "codigo_fabricante": "ABC123456",
-//     "data_fabricacao": "2022-01-15",
-//     "data_validade": "2027-01-15",
-//     "ultima_recarga": "2023-01-10",
-//     "proxima_inspecao": "2024-01-10",
-//     "status": "Ativo",
-//     "id_localizacao": 1,
-//     "qr_code": "QRCODE123456789",
-//     "observacoes": "Extintor em perfeito estado"
-//   }
+//     "numero_equipamento" : 12314124,
+//     "tipo" : "pqs",
+//     "capacidade" : "10L",
+//     "data_fabricacao" : "2022-01-15",
+//     "data_validade" : "2022-01-15",
+//     "status" : "Em Manutenção",
+//     "id_localizacao" : 1,
+//     "observacoes" : ""
+// }
+
 
 
 });
 
 // Rota para pegar estacoes da linha
 router.get('/get-station', async (req, res) => {
-    const { area } = req.query;
+    const { linha } = req.query;
 
-    if (!area) {
-        return res.status(400).json({ message: 'Área não informada!' });
+    if (!linha) {
+        return res.status(400).json({ message: 'Linha não informada!' });
     }
 
     try {
         const sqlQuery = `
-            SELECT Subarea 
-            FROM Localizacoes 
-            WHERE Area = $1
+            SELECT estacao 
+            FROM localizacoes 
+            WHERE linha = $1
         `;
-        const params = [area];
+        const params = [linha];
 
         console.log('Executing query:', sqlQuery);
         console.log('With parameters:', params);
@@ -276,7 +267,7 @@ router.get('/get-station', async (req, res) => {
         const resultados = await db.executeQuery(sqlQuery, params);
 
         if (resultados.length === 0) {
-            return res.status(404).json({ message: 'Nenhuma subárea encontrada para a área informada.' });
+            return res.status(404).json({ message: 'Nenhuma estacao encontrada para a linha informada.' });
         }
 
         res.json(resultados);
@@ -285,30 +276,28 @@ router.get('/get-station', async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 
-    //http://localhost:5000/api/auth/get-station?area=Linha verde
+    //http://localhost:5000/api/auth/get-station?linha=Verde
 });
 
 // Rota para pegar detalhes das estacoes
 router.get('/get-station-details', async (req, res) => {
-    const { area, station } = req.query;
+    const { linha, estacao } = req.query;
 
-    // Validações de entrada
-    if (!area) {
-        return res.status(400).json({ message: 'Área não informada!' });
+    if (!linha) {
+        return res.status(400).json({ message: 'Linha não informada!' });
     }
 
-    if (!station) {
+    if (!estacao) {
         return res.status(400).json({ message: 'Estação não informada!' });
     }
 
     try {
-        // Query SQL com dois parâmetros
         const sqlQuery = `
             SELECT local_detalhado 
             FROM Localizacoes 
-            WHERE subarea = $1 AND area = $2
+            WHERE linha = $1 AND estacao = $2
         `;
-        const params = [station, area];  
+        const params = [linha, estacao];  
 
         console.log('Executing query:', sqlQuery);
         console.log('With parameters:', params);
@@ -324,19 +313,19 @@ router.get('/get-station-details', async (req, res) => {
         console.error(error);  
         res.status(500).json({ message: 'Erro no servidor!' });  
     }
-    // http://34.206.23.185:5000/api/auth/get-station-details?station=Sumare&area=Verde
+    // http://localhost:5000/api/auth/get-station-details?linha=Verde&estacao=Penha
 });
 
 //Rota para pegar o id da localizacao a partir da area, subarea e local detalhado
 router.get('/get-location-id', async (req, res) => {
-    const { area, subarea, localDetalhado } = req.query;
+    const { linha, estacao, localDetalhado } = req.query;
 
     // Validações de entrada
-    if (!area) {
+    if (!linha) {
         return res.status(400).json({ message: 'Área não informada!' });
     }
 
-    if (!subarea) {
+    if (!estacao) {
         return res.status(400).json({ message: 'Subárea não informada!' });
     }
 
@@ -348,9 +337,9 @@ router.get('/get-location-id', async (req, res) => {
         const sqlQuery = `
             SELECT id_localizacao 
             FROM Localizacoes 
-            WHERE area = $1 AND subarea = $2 AND local_detalhado = $3
+            WHERE linha = $1 AND estacao = $2 AND local_detalhado = $3
         `;
-        const params = [area, subarea, localDetalhado];
+        const params = [linha, estacao, localDetalhado];
 
         console.log('Executing query:', sqlQuery);
         console.log('With parameters:', params);
@@ -366,7 +355,7 @@ router.get('/get-location-id', async (req, res) => {
         console.error(error);  
         res.status(500).json({ message: 'Erro no servidor!' });  
     }
-    //http://localhost:5000/api/auth/get-location-id?area=Verde&subarea=Sumare&localDetalhado=escada sul
+    // http://localhost:5000/api/auth/get-location-id?linha=Verde&estacao=Penha&localDetalhado=Saida Sul
 });
 
 module.exports = router;
