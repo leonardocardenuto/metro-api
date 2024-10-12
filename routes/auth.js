@@ -288,5 +288,42 @@ router.get('/get-station', async (req, res) => {
     //http://localhost:5000/api/auth/get-station?area=Linha verde
 });
 
+// Rota para pegar detalhes das estacoes
+router.get('/get-station-details', async (req, res) => {
+    const { area, station } = req.query;
+
+    // Validações de entrada
+    if (!area) {
+        return res.status(400).json({ message: 'Área não informada!' });
+    }
+
+    if (!station) {
+        return res.status(400).json({ message: 'Estação não informada!' });
+    }
+
+    try {
+        // Query SQL com dois parâmetros
+        const sqlQuery = `
+            SELECT local_detalhado 
+            FROM Localizacoes 
+            WHERE subarea = $1 AND area = $2
+        `;
+        const params = [station, area];  
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum local detalhado encontrado para a estação informada.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+});
 
 module.exports = router;
