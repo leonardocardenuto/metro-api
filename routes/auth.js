@@ -177,8 +177,8 @@ router.get('/search', async (req, res) => {
 
         if (query) {
             const numeroEquipamentoQuery = Number(query);
-            const isInteger = Number.isInteger(patrimonioQuery);
-
+            const isInteger = Number.isInteger(numeroEquipamentoQuery); 
+        
             if (isInteger) {
                 sqlQuery += ` AND (numero_equipamento = $1::int OR tipo ILIKE $2)`;
                 params.push(numeroEquipamentoQuery, `%${query}%`);
