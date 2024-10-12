@@ -176,10 +176,8 @@ router.get('/search', async (req, res) => {
         const params = [];
 
         if (query) {
-            const numeroEquipamentoQuery = Number(query);
-        
-            sqlQuery += ` AND (numero_equipamento ILIKE $1 OR tipo ILIKE $2)`;
-            params.push(numeroEquipamentoQuery, `%${query}%`);
+            sqlQuery += ` AND (numero_equipamento ILIKE $1 OR tipo ILIKE $1)`;
+            params.push(`%${query}%`);
         }
 
         console.log('Executing query:', sqlQuery);
