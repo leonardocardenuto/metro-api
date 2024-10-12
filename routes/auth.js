@@ -169,19 +169,19 @@ router.get('/search', async (req, res) => {
 
     try {
         let sqlQuery = `
-            SELECT qr_code, patrimonio, tipo, status 
+            SELECT numero_equipamento,  tipo, status 
             FROM extintores 
             WHERE 1=1
         `;
         const params = [];
 
         if (query) {
-            const patrimonioQuery = Number(query);
+            const numeroEquipamentoQuery = Number(query);
             const isInteger = Number.isInteger(patrimonioQuery);
 
             if (isInteger) {
-                sqlQuery += ` AND (patrimonio = $1::int OR tipo ILIKE $2)`;
-                params.push(patrimonioQuery, `%${query}%`);
+                sqlQuery += ` AND (numero_equipamento = $1::int OR tipo ILIKE $2)`;
+                params.push(numeroEquipamentoQuery, `%${query}%`);
             } else {
                 sqlQuery += ` AND tipo ILIKE $1`;
                 params.push(`%${query}%`);
@@ -203,7 +203,6 @@ router.get('/search', async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
-
 
 // Rota para adicionar extintores
 router.post('/add-extinguisher', async (req, res) => {
