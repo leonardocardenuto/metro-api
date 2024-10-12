@@ -169,7 +169,7 @@ router.get('/search', async (req, res) => {
 
     try {
         let sqlQuery = `
-            SELECT numero_equipamento,  tipo, status 
+            SELECT numero_equipamento, tipo, status 
             FROM extintores 
             WHERE 1=1
         `;
