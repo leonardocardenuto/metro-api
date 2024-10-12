@@ -324,6 +324,49 @@ router.get('/get-station-details', async (req, res) => {
         console.error(error);  
         res.status(500).json({ message: 'Erro no servidor!' });  
     }
+    // http://34.206.23.185:5000/api/auth/get-station-details?station=Sumare&area=Verde
+});
+
+//Rota para pegar o id da localizacao a partir da area, subarea e local detalhado
+router.get('/get-location-id', async (req, res) => {
+    const { area, subarea, localDetalhado } = req.query;
+
+    // Validações de entrada
+    if (!area) {
+        return res.status(400).json({ message: 'Área não informada!' });
+    }
+
+    if (!subarea) {
+        return res.status(400).json({ message: 'Subárea não informada!' });
+    }
+
+    if (!localDetalhado) {
+        return res.status(400).json({ message: 'Local detalhado não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT id_localizacao 
+            FROM Localizacoes 
+            WHERE area = $1 AND subarea = $2 AND local_detalhado = $3
+        `;
+        const params = [area, subarea, localDetalhado];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma localização encontrada.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    //http://localhost:5000/api/auth/get-location-id?area=Verde&subarea=Sumare&localDetalhado=escada sul
 });
 
 module.exports = router;
