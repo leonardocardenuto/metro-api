@@ -234,7 +234,7 @@ router.post('/add-extinguisher', async (req, res) => {
 });
 
 //Rota para verificar se o extintor ja existe no bd
-router.post('/verify-existence', async (req, res) => {
+router.get('/verify-existence', async (req, res) => {
     const { numero_equipamento } = req.query;
 
     if (!numero_equipamento) {
