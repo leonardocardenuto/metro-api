@@ -349,4 +349,35 @@ router.get('/get-location-id', async (req, res) => {
     // http://localhost:5000/api/auth/get-location-id?linha=Verde&estacao=Penha&localDetalhado=Saida Sul
 });
 
+//rota para pegar informações para o grafico
+router.get('/get-graphics-info', async (req, res) => {
+    const { status } = req.query;
+
+    if (!status) {
+        return res.status(400).json({ message: 'Estado não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT COUNT(*) as count FROM equipamentos WHERE status = $1
+        `;
+        const params = [status];  
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum extintor encontrado com o estado informado.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-station-details?linha=Verde&estacao=Penha
+});
+
 module.exports = router;
