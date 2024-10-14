@@ -231,10 +231,44 @@ router.post('/add-extinguisher', async (req, res) => {
 //     "id_localizacao" : 1,
 //     "observacoes" : ""
 // }
-
-
-
 });
+
+//Rota para verificar se o extintor ja existe no bd
+router.post('/verify-existence', async (req, res) => {
+    const { numero_equipamento } = req.query;
+
+    if (!numero_equipamento) {
+        return res.status(400).json({ message: 'Numero do equipamento não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT EXISTS (
+                SELECT 1 
+                FROM extintores
+                WHERE numero_equipamento = $1
+            );
+        `;
+        const params = [numero_equipamento];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma estacao encontrada para a linha informada.' });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+
+    // http://localhost:5000/api/auth/verify-existence?numero_equipamento=09
+});
+
 
 // Rota para pegar estacoes da linha
 router.get('/get-station', async (req, res) => {
