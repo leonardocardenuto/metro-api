@@ -350,6 +350,7 @@ router.get('/get-location-id', async (req, res) => {
 });
 
 //rota para pegar informações para o grafico
+
 router.get('/get-graphics-info', async (req, res) => {
     const { status } = req.query;
 
@@ -358,10 +359,22 @@ router.get('/get-graphics-info', async (req, res) => {
     }
 
     try {
+        // Dividir o status em um array
+        const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+        
+        if (statuses.length === 0) {
+            return res.status(400).json({ message: 'Nenhum estado válido informado!' });
+        }
+
+        // Criar placeholders para a consulta
+        const placeholders = statuses.map((_, index) => `$${index + 1}`).join(', ');
+        
         const sqlQuery = `
-            SELECT COUNT(*) as count FROM equipamentos WHERE status = $1
+            SELECT COUNT(*) as count FROM extintores WHERE status IN (${placeholders})
         `;
-        const params = [status];  
+        
+        // Adiciona os parâmetros à consulta
+        const params = statuses;  
 
         console.log('Executing query:', sqlQuery);
         console.log('With parameters:', params);
@@ -369,7 +382,7 @@ router.get('/get-graphics-info', async (req, res) => {
         const resultados = await db.executeQuery(sqlQuery, params);
 
         if (resultados.length === 0) {
-            return res.status(404).json({ message: 'Nenhum extintor encontrado com o estado informado.' });
+            return res.status(404).json({ message: 'Nenhum extintor encontrado com os estados informados.' });
         }
 
         res.json(resultados);  
@@ -377,7 +390,7 @@ router.get('/get-graphics-info', async (req, res) => {
         console.error(error);  
         res.status(500).json({ message: 'Erro no servidor!' });  
     }
-    // http://localhost:5000/api/auth/get-station-details?linha=Verde&estacao=Penha
 });
 
+// http://localhost:5000/api/auth/get-graphics-info?status=Ativo,Inativo
 module.exports = router;
