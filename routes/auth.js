@@ -349,9 +349,9 @@ router.get('/get-location-id', async (req, res) => {
     // http://localhost:5000/api/auth/get-location-id?linha=Verde&estacao=Penha&localDetalhado=Saida Sul
 });
 
-//rota para pegar informações para o grafico
 
-router.get('/get-graphics-info', async (req, res) => {
+//rota para pegar quantia de extintores por status para o grafico
+router.get('/get-status-info', async (req, res) => {
     const { status } = req.query;
 
     if (!status) {
@@ -359,22 +359,22 @@ router.get('/get-graphics-info', async (req, res) => {
     }
 
     try {
-        // Dividir o status em um array
         const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
         
         if (statuses.length === 0) {
             return res.status(400).json({ message: 'Nenhum estado válido informado!' });
         }
 
-        // Criar placeholders para a consulta
         const placeholders = statuses.map((_, index) => `$${index + 1}`).join(', ');
         
         const sqlQuery = `
-            SELECT COUNT(*) as count FROM extintores WHERE status IN (${placeholders})
+            SELECT status, COUNT(*) as count 
+            FROM extintores 
+            WHERE status IN (${placeholders})
+            GROUP BY status
         `;
         
-        // Adiciona os parâmetros à consulta
-        const params = statuses;  
+        const params = statuses;
 
         console.log('Executing query:', sqlQuery);
         console.log('With parameters:', params);
@@ -390,7 +390,7 @@ router.get('/get-graphics-info', async (req, res) => {
         console.error(error);  
         res.status(500).json({ message: 'Erro no servidor!' });  
     }
+    // http://localhost:5000/api/auth/get-status-info?status=Ativo,Inativo
 });
 
-// http://localhost:5000/api/auth/get-graphics-info?status=Ativo,Inativo
 module.exports = router;
