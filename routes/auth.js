@@ -427,4 +427,31 @@ router.get('/get-status-info', async (req, res) => {
     // http://localhost:5000/api/auth/get-status-info?status=Ativo,Inativo
 });
 
+//rota para adicionar locaolizacoes
+router.post('/add-location', async (req, res) => {
+    const { linha, estacao, local_detalhado } = req.body;
+
+    try {
+        const existingLocation = await db.executeQuery(
+            'SELECT * FROM localizacoes WHERE linha = $1 AND estacao = $2 AND local_detalhado = $3',
+            [linha, estacao, local_detalhado]
+        );
+
+        if (existingLocation.length > 0) {
+            return res.status(400).json({ message: 'Localização já existe!' });
+        }
+        
+        await db.insertData('localizacoes', {
+            linha,
+            estacao,
+            local_detalhado
+        });
+
+        res.status(201).json({ message: 'Localizacao registrada com sucesso!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
+
 module.exports = router;
