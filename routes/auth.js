@@ -438,16 +438,16 @@ router.post('/add-location', async (req, res) => {
         );
 
         if (existingLocation.length > 0) {
-            return res.status(400).json({ message: 'Localização já existe!' });
+            return res.status(400).json({ message: 'Essa Localização já existe!' });
         }
-        
+
         await db.insertData('localizacoes', {
             linha,
             estacao,
             local_detalhado
         });
 
-        res.status(201).json({ message: 'Localizacao registrada com sucesso!' });
+        res.status(201).json({ message: 'Localizacao registrada com sucesso!', success : true });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
