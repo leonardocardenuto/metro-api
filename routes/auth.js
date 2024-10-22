@@ -265,7 +265,6 @@ router.post('/add-cronjob', async (req, res) => {
 //     "id_localizacao" : 1,
 //     "observacoes" : ""
 // }
-});
 
 //Rota para verificar se o extintor ja existe no bd
 router.get('/verify-existence', async (req, res) => {
