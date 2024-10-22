@@ -220,6 +220,61 @@ router.post('/add-extinguisher', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
+});
+
+// Rota para deletar extintor
+router.delete('/delete-extinguisher/:numero_equipamento', async (req, res) => {
+    const { numero_equipamento } = req.params;
+
+    try {
+        const extinguisher = await db.executeQuery('SELECT * FROM Extintores WHERE numero_equipamento = $1', [numero_equipamento]);
+        
+        if (extinguisher.length === 0) {
+            return res.status(404).json({ message: 'Extintor não encontrado!' });
+        }
+
+        await db.executeQuery('DELETE FROM Extintores WHERE numero_equipamento = $1', [numero_equipamento]);
+
+        res.json({ message: 'Extintor deletado com sucesso!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
+
+
+// Rota para adicionar cron jobs
+router.post('/add-cronjob', async (req, res) => {
+    const { relatorio_id, frequencia, hora_execucao, dia_da_semana, dia_do_mes, proxima_execucao, emails, notas } = req.body;
+
+    try {
+        // Verificar se o relatório existe
+        const relatorio = await db.executeQuery('SELECT * FROM relatorios WHERE id = $1', [relatorio_id]);
+        if (relatorio.length === 0) {
+            return res.status(400).json({ message: 'Relatório não encontrado!' });
+        }
+
+        // Inserir cron job no banco de dados
+        await db.insertData('cron_jobs', {
+            relatorio_id,
+            frequencia,
+            hora_execucao,
+            dia_da_semana,
+            dia_do_mes,
+            proxima_execucao,
+            status: 'ativo',
+            emails,
+            notas
+        });
+
+        res.status(201).json({ message: 'Cron job criado com sucesso!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
+
+
 // Exemplo de request
 // {
 //     "numero_equipamento" : 12314124,
@@ -231,7 +286,6 @@ router.post('/add-extinguisher', async (req, res) => {
 //     "id_localizacao" : 1,
 //     "observacoes" : ""
 // }
-});
 
 //Rota para verificar se o extintor ja existe no bd
 router.get('/verify-existence', async (req, res) => {
