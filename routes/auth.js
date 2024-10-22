@@ -222,6 +222,27 @@ router.post('/add-extinguisher', async (req, res) => {
     }
 });
 
+// Rota para deletar extintor
+router.delete('/delete-extinguisher/:numero_equipamento', async (req, res) => {
+    const { numero_equipamento } = req.params;
+
+    try {
+        const extinguisher = await db.executeQuery('SELECT * FROM Extintores WHERE numero_equipamento = $1', [numero_equipamento]);
+        
+        if (extinguisher.length === 0) {
+            return res.status(404).json({ message: 'Extintor não encontrado!' });
+        }
+
+        await db.executeQuery('DELETE FROM Extintores WHERE numero_equipamento = $1', [numero_equipamento]);
+
+        res.json({ message: 'Extintor deletado com sucesso!' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
+
+
 // Rota para adicionar cron jobs
 router.post('/add-cronjob', async (req, res) => {
     const { relatorio_id, frequencia, hora_execucao, dia_da_semana, dia_do_mes, proxima_execucao, emails, notas } = req.body;
