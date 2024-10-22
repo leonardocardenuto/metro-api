@@ -169,23 +169,15 @@ router.get('/search', async (req, res) => {
 
     try {
         let sqlQuery = `
-            SELECT qr_code, patrimonio, tipo, status 
+            SELECT numero_equipamento, tipo, status 
             FROM extintores 
             WHERE 1=1
         `;
         const params = [];
 
         if (query) {
-            const patrimonioQuery = Number(query);
-            const isInteger = Number.isInteger(patrimonioQuery);
-
-            if (isInteger) {
-                sqlQuery += ` AND (patrimonio = $1::int OR tipo ILIKE $2)`;
-                params.push(patrimonioQuery, `%${query}%`);
-            } else {
-                sqlQuery += ` AND tipo ILIKE $1`;
-                params.push(`%${query}%`);
-            }
+            sqlQuery += ` AND (numero_equipamento ILIKE $1 OR tipo ILIKE $1)`;
+            params.push(`%${query}%`);
         }
 
         console.log('Executing query:', sqlQuery);
@@ -204,20 +196,13 @@ router.get('/search', async (req, res) => {
     }
 });
 
-
 // Rota para adicionar extintores
 router.post('/add-extinguisher', async (req, res) => {
-    const { tipo, capacidade, codigo_fabricante, data_fabricacao, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao, qr_code, observacoes } = req.body;
+    const { numero_equipamento, tipo, capacidade, codigo_fabricante, data_fabricacao, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao,  observacoes } = req.body;
 
     try {
-        // Verificar se o extintor com o QR Code já existe
-        const extintor = await db.executeQuery('SELECT * FROM Extintores WHERE qr_code = $1', [qr_code]);
-        if (extintor.length > 0) {
-            return res.status(400).json({ message: 'Extintor já existe com este QR Code!' });
-        }
-
-        // Inserir o novo extintor no banco de dados
         await db.insertData('Extintores', {
+            numero_equipamento,
             tipo,
             capacidade,
             codigo_fabricante,
@@ -227,7 +212,6 @@ router.post('/add-extinguisher', async (req, res) => {
             proxima_inspecao,
             status,
             id_localizacao,
-            qr_code,
             observacoes
         });
 
@@ -272,18 +256,236 @@ router.post('/add-cronjob', async (req, res) => {
 
 // Exemplo de request
 // {
-//     "tipo": "PQS",
-//     "capacidade": "10kg",
-//     "codigo_fabricante": "ABC123456",
-//     "data_fabricacao": "2022-01-15",
-//     "data_validade": "2027-01-15",
-//     "ultima_recarga": "2023-01-10",
-//     "proxima_inspecao": "2024-01-10",
-//     "status": "Ativo",
-//     "id_localizacao": 1,
-//     "qr_code": "QRCODE123456789",
-//     "observacoes": "Extintor em perfeito estado"
-//   }
+//     "numero_equipamento" : 12314124,
+//     "tipo" : "pqs",
+//     "capacidade" : "10L",
+//     "data_fabricacao" : "2022-01-15",
+//     "data_validade" : "2022-01-15",
+//     "status" : "Em Manutenção",
+//     "id_localizacao" : 1,
+//     "observacoes" : ""
+// }
+});
 
+//Rota para verificar se o extintor ja existe no bd
+router.get('/verify-existence', async (req, res) => {
+    const { numero_equipamento } = req.query;
+
+    if (!numero_equipamento) {
+        return res.status(400).json({ message: 'Numero do equipamento não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT EXISTS (
+                SELECT 1 
+                FROM extintores
+                WHERE numero_equipamento = $1
+            );
+        `;
+        const params = [numero_equipamento];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma estacao encontrada para a linha informada.' });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+
+    // http://localhost:5000/api/auth/verify-existence?numero_equipamento=09
+});
+
+
+// Rota para pegar estacoes da linha
+router.get('/get-station', async (req, res) => {
+    const { linha } = req.query;
+
+    if (!linha) {
+        return res.status(400).json({ message: 'Linha não informada!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT estacao 
+            FROM localizacoes 
+            WHERE linha = $1
+        `;
+        const params = [linha];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma estacao encontrada para a linha informada.' });
+        }
+
+        res.json(resultados);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+
+    //http://localhost:5000/api/auth/get-station?linha=Verde
+});
+
+// Rota para pegar detalhes das estacoes
+router.get('/get-station-details', async (req, res) => {
+    const { linha, estacao } = req.query;
+
+    if (!linha) {
+        return res.status(400).json({ message: 'Linha não informada!' });
+    }
+
+    if (!estacao) {
+        return res.status(400).json({ message: 'Estação não informada!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT local_detalhado 
+            FROM Localizacoes 
+            WHERE linha = $1 AND estacao = $2
+        `;
+        const params = [linha, estacao];  
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum local detalhado encontrado para a estação informada.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-station-details?linha=Verde&estacao=Penha
+});
+
+//Rota para pegar o id da localizacao a partir da area, subarea e local detalhado
+router.get('/get-location-id', async (req, res) => {
+    const { linha, estacao, localDetalhado } = req.query;
+
+    // Validações de entrada
+    if (!linha) {
+        return res.status(400).json({ message: 'Área não informada!' });
+    }
+
+    if (!estacao) {
+        return res.status(400).json({ message: 'Subárea não informada!' });
+    }
+
+    if (!localDetalhado) {
+        return res.status(400).json({ message: 'Local detalhado não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT id_localizacao 
+            FROM Localizacoes 
+            WHERE linha = $1 AND estacao = $2 AND local_detalhado = $3
+        `;
+        const params = [linha, estacao, localDetalhado];
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma localização encontrada.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-location-id?linha=Verde&estacao=Penha&localDetalhado=Saida Sul
+});
+
+
+//rota para pegar quantia de extintores por status para o grafico
+router.get('/get-status-info', async (req, res) => {
+    const { status } = req.query;
+
+    if (!status) {
+        return res.status(400).json({ message: 'Estado não informado!' });
+    }
+
+    try {
+        const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+        
+        if (statuses.length === 0) {
+            return res.status(400).json({ message: 'Nenhum estado válido informado!' });
+        }
+
+        const placeholders = statuses.map((_, index) => `$${index + 1}`).join(', ');
+        
+        const sqlQuery = `
+            SELECT status, COUNT(*) as count 
+            FROM extintores 
+            WHERE status IN (${placeholders})
+            GROUP BY status
+        `;
+        
+        const params = statuses;
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum extintor encontrado com os estados informados.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-status-info?status=Ativo,Inativo
+});
+
+//rota para adicionar locaolizacoes
+router.post('/add-location', async (req, res) => {
+    const { linha, estacao, local_detalhado } = req.body;
+
+    try {
+        const existingLocation = await db.executeQuery(
+            'SELECT * FROM localizacoes WHERE linha = $1 AND estacao = $2 AND local_detalhado = $3',
+            [linha, estacao, local_detalhado]
+        );
+
+        if (existingLocation.length > 0) {
+            return res.status(400).json({ message: 'Essa Localização já existe!' });
+        }
+
+        await db.insertData('localizacoes', {
+            linha,
+            estacao,
+            local_detalhado
+        });
+
+        res.status(201).json({ message: 'Localizacao registrada com sucesso!', success : true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Erro no servidor!' });
+    }
+});
 
 module.exports = router;
