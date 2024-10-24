@@ -220,6 +220,18 @@ router.post('/add-extinguisher', async (req, res) => {
         console.error(error);
         res.status(500).json({ message: 'Erro no servidor!' });
     }
+    // Exemplo de request
+// {
+//     "numero_equipamento" : 12314124,
+//     "tipo" : "pqs",
+//     "capacidade" : "10L",
+//     "data_fabricacao" : "2022-01-15",
+//     "data_validade" : "2022-01-15",
+//     "status" : "Em Manutenção",
+//     "id_localizacao" : 1,
+//     "observacoes" : ""
+// }
+
 });
 
 // Rota para deletar extintor
@@ -273,19 +285,6 @@ router.post('/add-cronjob', async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
-
-
-// Exemplo de request
-// {
-//     "numero_equipamento" : 12314124,
-//     "tipo" : "pqs",
-//     "capacidade" : "10L",
-//     "data_fabricacao" : "2022-01-15",
-//     "data_validade" : "2022-01-15",
-//     "status" : "Em Manutenção",
-//     "id_localizacao" : 1,
-//     "observacoes" : ""
-// }
 
 //Rota para verificar se o extintor ja existe no bd
 router.get('/verify-existence', async (req, res) => {
@@ -507,5 +506,72 @@ router.post('/add-location', async (req, res) => {
         res.status(500).json({ message: 'Erro no servidor!' });
     }
 });
+
+// Rota para pegar detalhes dos equipamentos e localizacoes
+router.get('/get-equipment-details', async (req, res) => {
+    const { numero_equipamento } = req.query;
+
+    if (!numero_equipamento) {
+        return res.status(400).json({ message: 'Numero do equipamento não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT numero_equipamento, tipo, capacidade, codigo_fabricante, data_validade, ultima_recarga, proxima_inspecao, status, id_localizacao
+            FROM extintores 
+            WHERE numero_equipamento = $1
+        `;
+        const params = [numero_equipamento];  
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhum equipamento encontrado.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-equipment-details?numero_equipamento=1
+});
+
+// Rota para pegar detalhes das localizacoes a partir do id
+router.get('/get-location-details', async (req, res) => {
+    const { id_localizacao } = req.query;
+
+    if (!id_localizacao) {
+        return res.status(400).json({ message: 'Id da localização do equipamento não informado!' });
+    }
+
+    try {
+        const sqlQuery = `
+            SELECT *
+            FROM localizacoes 
+            WHERE id_localizacao = $1
+        `;
+        const params = [id_localizacao];  
+
+        console.log('Executing query:', sqlQuery);
+        console.log('With parameters:', params);
+
+        const resultados = await db.executeQuery(sqlQuery, params);
+
+        if (resultados.length === 0) {
+            return res.status(404).json({ message: 'Nenhuma localizacao encontrada para o id informado.' });
+        }
+
+        res.json(resultados);  
+    } catch (error) {
+        console.error(error);  
+        res.status(500).json({ message: 'Erro no servidor!' });  
+    }
+    // http://localhost:5000/api/auth/get-location-details?id_localizacao=1
+});
+
 
 module.exports = router;
